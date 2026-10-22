@@ -5,7 +5,6 @@ pipeline {
     stages {
         stage('Checkout GitHub') {
             steps {
-                echo 'Source code will be checked out from GitHub'
                 checkout scm
             }
         }
@@ -22,6 +21,31 @@ pipeline {
             }
         }
 
+        stage('Start Test Environment') {
+            steps {
+                bat '''
+                    docker rm -f hackforge-test-app hackforge-selenium 2>NUL
+                    docker run -d --name hackforge-test-app -p 5001:5000 hackforge-registration
+                    docker run -d --name hackforge-selenium -p 4444:4444 selenium/standalone-chrome:latest
+                    timeout /t 20 /nobreak >NUL
+                '''
+            }
+        }
+
+        stage('Run Selenium Tests') {
+            steps {
+                bat '''
+                    docker run --rm ^
+                    -v "%CD%:/workspace" ^
+                    -w /workspace ^
+                    -e SELENIUM_URL=http://host.docker.internal:4444/wd/hub ^
+                    -e APP_URL=http://host.docker.internal:5001 ^
+                    python:3.13-slim ^
+                    sh -c "pip install --no-cache-dir selenium && python 'New folder/test_selenium.py'"
+                '''
+            }
+        }
+
         stage('Deploy Application') {
             steps {
                 bat '''
@@ -35,6 +59,15 @@ pipeline {
             steps {
                 bat 'docker ps --filter "name=hackforge-app"'
             }
+        }
+    }
+
+    post {
+        always {
+            bat '''
+                docker rm -f hackforge-test-app hackforge-selenium 2>NUL
+                exit /b 0
+            '''
         }
     }
 }
