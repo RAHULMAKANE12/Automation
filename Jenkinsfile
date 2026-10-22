@@ -21,16 +21,18 @@ pipeline {
             }
         }
 
-        stage('Start Test Environment') {
-            steps {
-                bat '''
-                    docker rm -f hackforge-test-app hackforge-selenium 2>NUL
-                    docker run -d --name hackforge-test-app -p 5001:5000 hackforge-registration
-                    docker run -d --name hackforge-selenium -p 4444:4444 selenium/standalone-chrome:latest
-                    timeout /t 20 /nobreak >NUL
-                '''
-            }
-        }
+        
+stage('Start Test Environment') {
+    steps {
+        bat '''
+            docker rm -f hackforge-test-app hackforge-selenium 2>NUL
+            docker run -d --name hackforge-test-app -p 5001:5000 hackforge-registration
+            docker run -d --name hackforge-selenium -p 4444:4444 selenium/standalone-chrome:latest
+            powershell -NoProfile -Command "Start-Sleep -Seconds 20"
+        '''
+    }
+}
+
 
         stage('Run Selenium Tests') {
             steps {
